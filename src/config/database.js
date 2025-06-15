@@ -3,9 +3,9 @@
  * MongoDB connection management with Mongoose
  */
 
-const mongoose = require('mongoose');
-const config = require('./index');
-const logger = require('../utils/logger');
+const mongoose = require("mongoose");
+const config = require("./index");
+const logger = require("../utils/logger");
 
 /**
  * Database connection state
@@ -17,24 +17,24 @@ let isConnected = false;
  */
 function configureMongoose() {
   // Enable strict mode for queries
-  mongoose.set('strictQuery', true);
-  
+  mongoose.set("strictQuery", true);
+
   // Enable strict mode for population
-  mongoose.set('strictPopulate', true);
+  mongoose.set("strictPopulate", true);
 
   // Disable automatic index creation in production
   if (config.isProduction()) {
-    mongoose.set('autoIndex', false);
+    mongoose.set("autoIndex", false);
   }
 
   // Enable debug mode in development
   if (config.development.debugDbQueries) {
-    mongoose.set('debug', (collectionName, method, query, doc) => {
-      logger.debug('Mongoose Debug:', {
+    mongoose.set("debug", (collectionName, method, query, doc) => {
+      logger.debug("Mongoose Debug:", {
         collection: collectionName,
         method,
         query,
-        doc
+        doc,
       });
     });
   }
@@ -45,50 +45,50 @@ function configureMongoose() {
  */
 function setupEventHandlers() {
   // Connection successful
-  mongoose.connection.on('connected', () => {
+  mongoose.connection.on("connected", () => {
     isConnected = true;
-    logger.info('✅ MongoDB connected successfully', {
+    logger.info("✅ MongoDB connected successfully", {
       host: mongoose.connection.host,
       port: mongoose.connection.port,
-      database: mongoose.connection.name
+      database: mongoose.connection.name,
     });
   });
 
   // Connection error
-  mongoose.connection.on('error', (error) => {
+  mongoose.connection.on("error", (error) => {
     isConnected = false;
-    logger.error('❌ MongoDB connection error:', error);
+    logger.error("❌ MongoDB connection error:", error);
   });
 
   // Disconnected
-  mongoose.connection.on('disconnected', () => {
+  mongoose.connection.on("disconnected", () => {
     isConnected = false;
-    logger.warn('⚠️ MongoDB disconnected');
+    logger.warn("⚠️ MongoDB disconnected");
   });
 
   // Reconnected
-  mongoose.connection.on('reconnected', () => {
+  mongoose.connection.on("reconnected", () => {
     isConnected = true;
-    logger.info('🔄 MongoDB reconnected');
+    logger.info("🔄 MongoDB reconnected");
   });
 
   // Connection timeout
-  mongoose.connection.on('timeout', () => {
-    logger.warn('⏰ MongoDB connection timeout');
+  mongoose.connection.on("timeout", () => {
+    logger.warn("⏰ MongoDB connection timeout");
   });
 
   // Full setup (indexes created)
-  mongoose.connection.on('index', (error) => {
+  mongoose.connection.on("index", (error) => {
     if (error) {
-      logger.error('❌ MongoDB index error:', error);
+      logger.error("❌ MongoDB index error:", error);
     } else {
-      logger.info('📝 MongoDB indexes created successfully');
+      logger.info("📝 MongoDB indexes created successfully");
     }
   });
 
   // Process termination handlers
-  process.on('SIGINT', gracefulShutdown);
-  process.on('SIGTERM', gracefulShutdown);
+  process.on("SIGINT", gracefulShutdown);
+  process.on("SIGTERM", gracefulShutdown);
 }
 
 /**
@@ -101,9 +101,9 @@ async function gracefulShutdown(signal) {
 
   try {
     await mongoose.connection.close();
-    logger.info('✅ MongoDB connection closed gracefully');
+    logger.info("✅ MongoDB connection closed gracefully");
   } catch (error) {
-    logger.error('❌ Error closing MongoDB connection:', error);
+    logger.error("❌ Error closing MongoDB connection:", error);
   }
 }
 
@@ -114,7 +114,7 @@ async function connectDatabase() {
   try {
     // Configure Mongoose before connecting
     configureMongoose();
-    
+
     // Setup event handlers
     setupEventHandlers();
 
@@ -124,12 +124,12 @@ async function connectDatabase() {
       dbName: getDatabaseName(config.database.uri),
     };
 
-    logger.info('🔌 Connecting to MongoDB...', {
+    logger.info("🔌 Connecting to MongoDB...", {
       uri: maskConnectionString(config.database.uri),
       options: {
         maxPoolSize: dbOptions.maxPoolSize,
-        minPoolSize: dbOptions.minPoolSize
-      }
+        minPoolSize: dbOptions.minPoolSize,
+      },
     });
 
     // Connect to MongoDB
@@ -139,9 +139,8 @@ async function connectDatabase() {
     await verifyConnection();
 
     return mongoose.connection;
-
   } catch (error) {
-    logger.error('❌ Failed to connect to MongoDB:', error);
+    logger.error("❌ Failed to connect to MongoDB:", error);
     throw error;
   }
 }
@@ -154,11 +153,11 @@ async function verifyConnection() {
     // Check if we can perform a simple operation
     const admin = mongoose.connection.db.admin();
     await admin.ping();
-    
-    logger.info('🏥 Database health check passed');
+
+    logger.info("🏥 Database health check passed");
     return true;
   } catch (error) {
-    logger.error('❌ Database health check failed:', error);
+    logger.error("❌ Database health check failed:", error);
     throw error;
   }
 }
@@ -168,19 +167,19 @@ async function verifyConnection() {
  */
 function getConnectionStatus() {
   const states = {
-    0: 'disconnected',
-    1: 'connected',
-    2: 'connecting',
-    3: 'disconnecting'
+    0: "disconnected",
+    1: "connected",
+    2: "connecting",
+    3: "disconnecting",
   };
 
   return {
     isConnected,
-    state: states[mongoose.connection.readyState] || 'unknown',
+    state: states[mongoose.connection.readyState] || "unknown",
     host: mongoose.connection.host,
     port: mongoose.connection.port,
     name: mongoose.connection.name,
-    collections: Object.keys(mongoose.connection.collections)
+    collections: Object.keys(mongoose.connection.collections),
   };
 }
 
@@ -189,22 +188,22 @@ function getConnectionStatus() {
  */
 async function createIndexes() {
   try {
-    logger.info('📝 Creating database indexes...');
-    
+    logger.info("📝 Creating database indexes...");
+
     // Get all models
     const models = mongoose.modelNames();
-    
+
     for (const modelName of models) {
       const model = mongoose.model(modelName);
-      
+
       // Ensure indexes for this model
       await model.createIndexes();
       logger.debug(`✅ Indexes created for ${modelName}`);
     }
-    
-    logger.info('✅ All database indexes created successfully');
+
+    logger.info("✅ All database indexes created successfully");
   } catch (error) {
-    logger.error('❌ Failed to create database indexes:', error);
+    logger.error("❌ Failed to create database indexes:", error);
     throw error;
   }
 }
@@ -214,15 +213,15 @@ async function createIndexes() {
  */
 async function dropDatabase() {
   if (config.isProduction()) {
-    throw new Error('Cannot drop database in production environment');
+    throw new Error("Cannot drop database in production environment");
   }
 
   try {
-    logger.warn('⚠️ Dropping database...');
+    logger.warn("⚠️ Dropping database...");
     await mongoose.connection.dropDatabase();
-    logger.info('✅ Database dropped successfully');
+    logger.info("✅ Database dropped successfully");
   } catch (error) {
-    logger.error('❌ Failed to drop database:', error);
+    logger.error("❌ Failed to drop database:", error);
     throw error;
   }
 }
@@ -234,7 +233,7 @@ async function getDatabaseStats() {
   try {
     const db = mongoose.connection.db;
     const stats = await db.stats();
-    
+
     return {
       database: stats.db,
       collections: stats.collections,
@@ -243,10 +242,10 @@ async function getDatabaseStats() {
       storageSize: formatBytes(stats.storageSize),
       indexes: stats.indexes,
       indexSize: formatBytes(stats.indexSize),
-      avgObjSize: formatBytes(stats.avgObjSize)
+      avgObjSize: formatBytes(stats.avgObjSize),
     };
   } catch (error) {
-    logger.error('❌ Failed to get database stats:', error);
+    logger.error("❌ Failed to get database stats:", error);
     throw error;
   }
 }
@@ -259,9 +258,9 @@ async function getDatabaseStats() {
 function getDatabaseName(uri) {
   try {
     const url = new URL(uri);
-    return url.pathname.slice(1) || 'test';
+    return url.pathname.slice(1) || "test";
   } catch {
-    return 'task_management';
+    return "task_management";
   }
 }
 
@@ -270,23 +269,23 @@ function maskConnectionString(uri) {
   try {
     const url = new URL(uri);
     if (url.password) {
-      url.password = '***';
+      url.password = "***";
     }
     return url.toString();
   } catch {
-    return uri.replace(/:([^:@]+)@/, ':***@');
+    return uri.replace(/:([^:@]+)@/, ":***@");
   }
 }
 
 // Format bytes to human readable format
 function formatBytes(bytes) {
-  if (bytes === 0) return '0 Bytes';
-  
+  if (bytes === 0) return "0 Bytes";
+
   const k = 1024;
-  const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+  const sizes = ["Bytes", "KB", "MB", "GB"];
   const i = Math.floor(Math.log(bytes) / Math.log(k));
-  
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
 }
 
 /**
@@ -295,25 +294,25 @@ function formatBytes(bytes) {
 async function healthCheck() {
   try {
     const status = getConnectionStatus();
-    
+
     if (!status.isConnected) {
-      throw new Error('Database not connected');
+      throw new Error("Database not connected");
     }
 
     // Perform a simple ping
     await mongoose.connection.db.admin().ping();
-    
+
     return {
-      status: 'healthy',
+      status: "healthy",
       timestamp: new Date().toISOString(),
       connection: status,
-      uptime: process.uptime()
+      uptime: process.uptime(),
     };
   } catch (error) {
     return {
-      status: 'unhealthy',
+      status: "unhealthy",
       timestamp: new Date().toISOString(),
-      error: error.message
+      error: error.message,
     };
   }
 }
@@ -328,5 +327,5 @@ module.exports = {
   getDatabaseStats,
   healthCheck,
   // For testing purposes
-  mongoose
+  mongoose,
 };

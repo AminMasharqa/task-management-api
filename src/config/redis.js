@@ -3,9 +3,9 @@
  * Redis connection management for caching, sessions, and real-time features
  */
 
-const { createClient } = require('redis');
-const config = require('./index');
-const logger = require('../utils/logger');
+const { createClient } = require("redis");
+const config = require("./index");
+const logger = require("../utils/logger");
 
 /**
  * Redis client instances
@@ -31,11 +31,11 @@ function createRedisClient(options = {}) {
       port: config.redis.port,
       connectTimeout: 10000,
       commandTimeout: 5000,
-      ...options.socket
+      ...options.socket,
     },
     password: config.redis.password || undefined,
     database: config.redis.db,
-    ...options
+    ...options,
   };
 
   // Remove empty password to avoid Redis auth errors
@@ -49,44 +49,46 @@ function createRedisClient(options = {}) {
 /**
  * Setup Redis event handlers
  */
-function setupEventHandlers(client, clientType = 'main') {
-  client.on('connect', () => {
+function setupEventHandlers(client, clientType = "main") {
+  client.on("connect", () => {
     logger.info(`🔌 Redis ${clientType} client connecting...`);
   });
 
-  client.on('ready', () => {
+  client.on("ready", () => {
     isConnected = true;
     connectionAttempts = 0;
     logger.info(`✅ Redis ${clientType} client connected successfully`, {
       host: config.redis.host,
       port: config.redis.port,
-      database: config.redis.db
+      database: config.redis.db,
     });
   });
 
-  client.on('error', (error) => {
+  client.on("error", (error) => {
     isConnected = false;
     logger.error(`❌ Redis ${clientType} client error:`, error);
-    
+
     // Handle specific error types
-    if (error.code === 'ECONNREFUSED') {
-      logger.error('🚫 Redis server is not running or unreachable');
-    } else if (error.code === 'ENOTFOUND') {
-      logger.error('🔍 Redis host not found');
-    } else if (error.message.includes('WRONGPASS')) {
-      logger.error('🔐 Redis authentication failed');
+    if (error.code === "ECONNREFUSED") {
+      logger.error("🚫 Redis server is not running or unreachable");
+    } else if (error.code === "ENOTFOUND") {
+      logger.error("🔍 Redis host not found");
+    } else if (error.message.includes("WRONGPASS")) {
+      logger.error("🔐 Redis authentication failed");
     }
   });
 
-  client.on('end', () => {
+  client.on("end", () => {
     isConnected = false;
     logger.warn(`⚠️ Redis ${clientType} client connection ended`);
   });
 
-  client.on('reconnecting', () => {
+  client.on("reconnecting", () => {
     connectionAttempts++;
-    logger.info(`🔄 Redis ${clientType} client reconnecting... (attempt ${connectionAttempts})`);
-    
+    logger.info(
+      `🔄 Redis ${clientType} client reconnecting... (attempt ${connectionAttempts})`
+    );
+
     if (connectionAttempts >= maxRetries) {
       logger.error(`❌ Redis ${clientType} client max retry attempts reached`);
     }
@@ -98,25 +100,25 @@ function setupEventHandlers(client, clientType = 'main') {
  */
 async function connectRedis() {
   try {
-    logger.info('🔌 Connecting to Redis...', {
+    logger.info("🔌 Connecting to Redis...", {
       host: config.redis.host,
       port: config.redis.port,
-      database: config.redis.db
+      database: config.redis.db,
     });
 
     // Create main Redis client for general operations
     redisClient = createRedisClient();
-    setupEventHandlers(redisClient, 'main');
+    setupEventHandlers(redisClient, "main");
     await redisClient.connect();
 
     // Create separate clients for pub/sub operations
-    if (config.nodeEnv !== 'test') {
+    if (config.nodeEnv !== "test") {
       redisSubscriber = createRedisClient();
-      setupEventHandlers(redisSubscriber, 'subscriber');
+      setupEventHandlers(redisSubscriber, "subscriber");
       await redisSubscriber.connect();
 
       redisPublisher = createRedisClient();
-      setupEventHandlers(redisPublisher, 'publisher');
+      setupEventHandlers(redisPublisher, "publisher");
       await redisPublisher.connect();
     }
 
@@ -127,9 +129,8 @@ async function connectRedis() {
     setupGracefulShutdown();
 
     return redisClient;
-
   } catch (error) {
-    logger.error('❌ Failed to connect to Redis:', error);
+    logger.error("❌ Failed to connect to Redis:", error);
     throw error;
   }
 }
@@ -140,24 +141,24 @@ async function connectRedis() {
 async function verifyConnection() {
   try {
     const pong = await redisClient.ping();
-    if (pong !== 'PONG') {
-      throw new Error('Redis ping failed');
+    if (pong !== "PONG") {
+      throw new Error("Redis ping failed");
     }
 
     // Test basic operations
-    await redisClient.set('health:check', 'ok', { EX: 10 });
-    const value = await redisClient.get('health:check');
-    
-    if (value !== 'ok') {
-      throw new Error('Redis read/write test failed');
+    await redisClient.set("health:check", "ok", { EX: 10 });
+    const value = await redisClient.get("health:check");
+
+    if (value !== "ok") {
+      throw new Error("Redis read/write test failed");
     }
 
-    await redisClient.del('health:check');
-    logger.info('🏥 Redis health check passed');
-    
+    await redisClient.del("health:check");
+    logger.info("🏥 Redis health check passed");
+
     return true;
   } catch (error) {
-    logger.error('❌ Redis health check failed:', error);
+    logger.error("❌ Redis health check failed:", error);
     throw error;
   }
 }
@@ -172,13 +173,13 @@ function getConnectionStatus() {
     clients: {
       main: redisClient?.isReady || false,
       subscriber: redisSubscriber?.isReady || false,
-      publisher: redisPublisher?.isReady || false
+      publisher: redisPublisher?.isReady || false,
     },
     config: {
       host: config.redis.host,
       port: config.redis.port,
-      database: config.redis.db
-    }
+      database: config.redis.db,
+    },
   };
 }
 
@@ -192,17 +193,17 @@ const cache = {
   async set(key, value, ttl = config.redis.ttl) {
     try {
       if (!redisClient?.isReady) {
-        logger.warn('Redis not available, skipping cache set');
+        logger.warn("Redis not available, skipping cache set");
         return false;
       }
 
       const serializedValue = JSON.stringify(value);
       await redisClient.setEx(key, ttl, serializedValue);
-      
+
       logger.debug(`📝 Cache set: ${key}`, { ttl });
       return true;
     } catch (error) {
-      logger.error('❌ Cache set error:', error);
+      logger.error("❌ Cache set error:", error);
       return false;
     }
   },
@@ -213,7 +214,7 @@ const cache = {
   async get(key) {
     try {
       if (!redisClient?.isReady) {
-        logger.warn('Redis not available, cache miss');
+        logger.warn("Redis not available, cache miss");
         return null;
       }
 
@@ -226,7 +227,7 @@ const cache = {
       logger.debug(`✅ Cache hit: ${key}`);
       return JSON.parse(value);
     } catch (error) {
-      logger.error('❌ Cache get error:', error);
+      logger.error("❌ Cache get error:", error);
       return null;
     }
   },
@@ -237,7 +238,7 @@ const cache = {
   async del(key) {
     try {
       if (!redisClient?.isReady) {
-        logger.warn('Redis not available, skipping cache delete');
+        logger.warn("Redis not available, skipping cache delete");
         return false;
       }
 
@@ -245,7 +246,7 @@ const cache = {
       logger.debug(`🗑️ Cache deleted: ${key}`);
       return result > 0;
     } catch (error) {
-      logger.error('❌ Cache delete error:', error);
+      logger.error("❌ Cache delete error:", error);
       return false;
     }
   },
@@ -259,9 +260,9 @@ const cache = {
         return false;
       }
 
-      return await redisClient.exists(key) === 1;
+      return (await redisClient.exists(key)) === 1;
     } catch (error) {
-      logger.error('❌ Cache exists error:', error);
+      logger.error("❌ Cache exists error:", error);
       return false;
     }
   },
@@ -272,12 +273,12 @@ const cache = {
   async incr(key, ttl = config.redis.ttl) {
     try {
       if (!redisClient?.isReady) {
-        logger.warn('Redis not available, skipping increment');
+        logger.warn("Redis not available, skipping increment");
         return 0;
       }
 
       const value = await redisClient.incr(key);
-      
+
       // Set TTL only on first increment
       if (value === 1 && ttl > 0) {
         await redisClient.expire(key, ttl);
@@ -285,7 +286,7 @@ const cache = {
 
       return value;
     } catch (error) {
-      logger.error('❌ Cache increment error:', error);
+      logger.error("❌ Cache increment error:", error);
       return 0;
     }
   },
@@ -296,7 +297,7 @@ const cache = {
   async clearPattern(pattern) {
     try {
       if (!redisClient?.isReady) {
-        logger.warn('Redis not available, skipping pattern clear');
+        logger.warn("Redis not available, skipping pattern clear");
         return 0;
       }
 
@@ -309,10 +310,10 @@ const cache = {
       logger.info(`🧹 Cleared ${result} cache entries matching: ${pattern}`);
       return result;
     } catch (error) {
-      logger.error('❌ Cache pattern clear error:', error);
+      logger.error("❌ Cache pattern clear error:", error);
       return 0;
     }
-  }
+  },
 };
 
 /**
@@ -325,17 +326,17 @@ const pubsub = {
   async publish(channel, data) {
     try {
       if (!redisPublisher?.isReady) {
-        logger.warn('Redis publisher not available');
+        logger.warn("Redis publisher not available");
         return false;
       }
 
       const message = JSON.stringify(data);
       await redisPublisher.publish(channel, message);
-      
+
       logger.debug(`📢 Published to ${channel}:`, data);
       return true;
     } catch (error) {
-      logger.error('❌ Publish error:', error);
+      logger.error("❌ Publish error:", error);
       return false;
     }
   },
@@ -346,7 +347,7 @@ const pubsub = {
   async subscribe(channel, callback) {
     try {
       if (!redisSubscriber?.isReady) {
-        logger.warn('Redis subscriber not available');
+        logger.warn("Redis subscriber not available");
         return false;
       }
 
@@ -356,14 +357,14 @@ const pubsub = {
           callback(data);
           logger.debug(`📨 Received from ${channel}:`, data);
         } catch (error) {
-          logger.error('❌ Message parse error:', error);
+          logger.error("❌ Message parse error:", error);
         }
       });
 
       logger.info(`👂 Subscribed to channel: ${channel}`);
       return true;
     } catch (error) {
-      logger.error('❌ Subscribe error:', error);
+      logger.error("❌ Subscribe error:", error);
       return false;
     }
   },
@@ -381,10 +382,10 @@ const pubsub = {
       logger.info(`🔇 Unsubscribed from channel: ${channel}`);
       return true;
     } catch (error) {
-      logger.error('❌ Unsubscribe error:', error);
+      logger.error("❌ Unsubscribe error:", error);
       return false;
     }
-  }
+  },
 };
 
 /**
@@ -393,12 +394,12 @@ const pubsub = {
 async function getRedisStats() {
   try {
     if (!redisClient?.isReady) {
-      throw new Error('Redis not connected');
+      throw new Error("Redis not connected");
     }
 
     const info = await redisClient.info();
-    const memory = await redisClient.info('memory');
-    const stats = await redisClient.info('stats');
+    const memory = await redisClient.info("memory");
+    const stats = await redisClient.info("stats");
 
     return {
       version: info.match(/redis_version:([^\r\n]*)/)?.[1],
@@ -407,10 +408,10 @@ async function getRedisStats() {
       usedMemory: memory.match(/used_memory_human:([^\r\n]*)/)?.[1],
       totalCommands: stats.match(/total_commands_processed:([^\r\n]*)/)?.[1],
       keyspaceHits: stats.match(/keyspace_hits:([^\r\n]*)/)?.[1],
-      keyspaceMisses: stats.match(/keyspace_misses:([^\r\n]*)/)?.[1]
+      keyspaceMisses: stats.match(/keyspace_misses:([^\r\n]*)/)?.[1],
     };
   } catch (error) {
-    logger.error('❌ Failed to get Redis stats:', error);
+    logger.error("❌ Failed to get Redis stats:", error);
     throw error;
   }
 }
@@ -421,10 +422,10 @@ async function getRedisStats() {
 function setupGracefulShutdown() {
   const shutdown = async (signal) => {
     logger.info(`🛑 Received ${signal}. Closing Redis connections...`);
-    
+
     try {
       const promises = [];
-      
+
       if (redisClient?.isReady) {
         promises.push(redisClient.quit());
       }
@@ -436,14 +437,14 @@ function setupGracefulShutdown() {
       }
 
       await Promise.all(promises);
-      logger.info('✅ Redis connections closed gracefully');
+      logger.info("✅ Redis connections closed gracefully");
     } catch (error) {
-      logger.error('❌ Error closing Redis connections:', error);
+      logger.error("❌ Error closing Redis connections:", error);
     }
   };
 
-  process.on('SIGTERM', () => shutdown('SIGTERM'));
-  process.on('SIGINT', () => shutdown('SIGINT'));
+  process.on("SIGTERM", () => shutdown("SIGTERM"));
+  process.on("SIGINT", () => shutdown("SIGINT"));
 }
 
 /**
@@ -452,23 +453,23 @@ function setupGracefulShutdown() {
 async function healthCheck() {
   try {
     const status = getConnectionStatus();
-    
+
     if (!status.isConnected) {
-      throw new Error('Redis not connected');
+      throw new Error("Redis not connected");
     }
 
     await redisClient.ping();
-    
+
     return {
-      status: 'healthy',
+      status: "healthy",
       timestamp: new Date().toISOString(),
-      connection: status
+      connection: status,
     };
   } catch (error) {
     return {
-      status: 'unhealthy',
+      status: "unhealthy",
       timestamp: new Date().toISOString(),
-      error: error.message
+      error: error.message,
     };
   }
 }
@@ -487,5 +488,5 @@ module.exports = {
   healthCheck,
   cache,
   pubsub,
-  getRedisClient
+  getRedisClient,
 };

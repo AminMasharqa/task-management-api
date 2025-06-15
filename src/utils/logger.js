@@ -3,10 +3,10 @@
  * Structured logging with Winston for development and production
  */
 
-const winston = require('winston');
-const path = require('path');
-const fs = require('fs');
-const config = require('../config');
+const winston = require("winston");
+const path = require("path");
+const fs = require("fs");
+const config = require("../config");
 
 /**
  * Ensure logs directory exists
@@ -24,15 +24,15 @@ const logLevels = {
   warn: 1,
   info: 2,
   http: 3,
-  debug: 4
+  debug: 4,
 };
 
 const logColors = {
-  error: 'red',
-  warn: 'yellow',
-  info: 'green',
-  http: 'magenta',
-  debug: 'cyan'
+  error: "red",
+  warn: "yellow",
+  info: "green",
+  http: "magenta",
+  debug: "cyan",
 };
 
 winston.addColors(logColors);
@@ -43,16 +43,16 @@ winston.addColors(logColors);
 const formats = {
   // Console format for development
   console: winston.format.combine(
-    winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
+    winston.format.timestamp({ format: "YYYY-MM-DD HH:mm:ss" }),
     winston.format.colorize({ all: true }),
     winston.format.printf(({ timestamp, level, message, ...meta }) => {
       let log = `${timestamp} [${level}]: ${message}`;
-      
+
       // Add metadata if present
       if (Object.keys(meta).length > 0) {
         log += `\n${JSON.stringify(meta, null, 2)}`;
       }
-      
+
       return log;
     })
   ),
@@ -70,7 +70,7 @@ const formats = {
     winston.format.timestamp(),
     winston.format.errors({ stack: true }),
     winston.format.json()
-  )
+  ),
 };
 
 /**
@@ -86,7 +86,7 @@ function createTransports() {
         level: config.logging.level,
         format: formats.console,
         handleExceptions: true,
-        handleRejections: true
+        handleRejections: true,
       })
     );
   }
@@ -102,21 +102,21 @@ function createTransports() {
         maxsize: parseSize(config.logging.maxSize),
         maxFiles: config.logging.maxFiles,
         tailable: true,
-        zippedArchive: true
+        zippedArchive: true,
       })
     );
 
     // Error-only log file
-    const errorLogFile = config.logging.file.replace('.log', '.error.log');
+    const errorLogFile = config.logging.file.replace(".log", ".error.log");
     transports.push(
       new winston.transports.File({
         filename: errorLogFile,
-        level: 'error',
+        level: "error",
         format: formats.error,
         maxsize: parseSize(config.logging.maxSize),
         maxFiles: config.logging.maxFiles,
         tailable: true,
-        zippedArchive: true
+        zippedArchive: true,
       })
     );
   }
@@ -128,13 +128,13 @@ function createTransports() {
  * Parse size string to bytes
  */
 function parseSize(size) {
-  if (typeof size === 'number') return size;
-  
+  if (typeof size === "number") return size;
+
   const units = { k: 1024, m: 1024 * 1024, g: 1024 * 1024 * 1024 };
   const match = size.toLowerCase().match(/^(\d+)([kmg]?)$/);
-  
+
   if (!match) return 5 * 1024 * 1024; // Default 5MB
-  
+
   const [, num, unit] = match;
   return parseInt(num) * (units[unit] || 1);
 }
@@ -151,7 +151,7 @@ const logger = winston.createLogger({
   ),
   transports: createTransports(),
   exitOnError: false,
-  silent: config.isTest() && !process.env.ENABLE_LOGGING
+  silent: config.isTest() && !process.env.ENABLE_LOGGING,
 });
 
 /**
@@ -175,11 +175,11 @@ class EnhancedLogger {
   log(level, message, meta = {}) {
     // Auto-detect request context
     const context = this.getContext();
-    
+
     this.winston.log(level, message, {
       ...context,
       ...meta,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     });
   }
 
@@ -188,48 +188,48 @@ class EnhancedLogger {
    */
   error(message, error = null, meta = {}) {
     const errorMeta = {
-      ...meta
+      ...meta,
     };
 
     if (error instanceof Error) {
       errorMeta.error = {
         message: error.message,
         stack: error.stack,
-        name: error.name
+        name: error.name,
       };
     } else if (error) {
       errorMeta.error = error;
     }
 
-    this.log('error', message, errorMeta);
+    this.log("error", message, errorMeta);
   }
 
   /**
    * Warning logging
    */
   warn(message, meta = {}) {
-    this.log('warn', message, meta);
+    this.log("warn", message, meta);
   }
 
   /**
    * Info logging
    */
   info(message, meta = {}) {
-    this.log('info', message, meta);
+    this.log("info", message, meta);
   }
 
   /**
    * HTTP request logging
    */
   http(message, meta = {}) {
-    this.log('http', message, meta);
+    this.log("http", message, meta);
   }
 
   /**
    * Debug logging
    */
   debug(message, meta = {}) {
-    this.log('debug', message, meta);
+    this.log("debug", message, meta);
   }
 
   /**
@@ -239,7 +239,7 @@ class EnhancedLogger {
     this.info(`Performance: ${operation}`, {
       ...meta,
       duration: `${duration}ms`,
-      performance: true
+      performance: true,
     });
   }
 
@@ -250,7 +250,7 @@ class EnhancedLogger {
     this.warn(`Security Event: ${event}`, {
       ...details,
       security: true,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     });
   }
 
@@ -260,7 +260,7 @@ class EnhancedLogger {
   business(event, data = {}) {
     this.info(`Business Event: ${event}`, {
       ...data,
-      business: true
+      business: true,
     });
   }
 
@@ -270,7 +270,7 @@ class EnhancedLogger {
   database(operation, collection, meta = {}) {
     this.debug(`Database: ${operation} on ${collection}`, {
       ...meta,
-      database: true
+      database: true,
     });
   }
 
@@ -278,15 +278,15 @@ class EnhancedLogger {
    * API logging
    */
   api(method, path, statusCode, duration, meta = {}) {
-    const level = statusCode >= 400 ? 'warn' : 'http';
-    
+    const level = statusCode >= 400 ? "warn" : "http";
+
     this.log(level, `API: ${method} ${path}`, {
       ...meta,
       api: true,
       method,
       path,
       statusCode,
-      duration: `${duration}ms`
+      duration: `${duration}ms`,
     });
   }
 
@@ -318,13 +318,13 @@ class EnhancedLogger {
    */
   timer(operation) {
     const start = Date.now();
-    
+
     return {
       end: (meta = {}) => {
         const duration = Date.now() - start;
         this.perf(operation, duration, meta);
         return duration;
-      }
+      },
     };
   }
 
@@ -332,24 +332,24 @@ class EnhancedLogger {
    * Log application startup
    */
   startup(service, version, port) {
-    this.info('🚀 Application Starting', {
+    this.info("🚀 Application Starting", {
       service,
       version,
       port,
       environment: config.nodeEnv,
       nodeVersion: process.version,
-      startup: true
+      startup: true,
     });
   }
 
   /**
    * Log application shutdown
    */
-  shutdown(reason = 'unknown') {
-    this.info('🛑 Application Shutting Down', {
+  shutdown(reason = "unknown") {
+    this.info("🛑 Application Shutting Down", {
       reason,
       uptime: process.uptime(),
-      shutdown: true
+      shutdown: true,
     });
   }
 
@@ -372,36 +372,30 @@ const enhancedLogger = new EnhancedLogger(logger);
 function createRequestLogger() {
   return (req, res, next) => {
     const start = Date.now();
-    
+
     // Generate request ID
-    req.id = require('uuid').v4();
+    req.id = require("uuid").v4();
     global.requestId = req.id;
 
     // Log request start
-    enhancedLogger.http('Request Started', {
+    enhancedLogger.http("Request Started", {
       method: req.method,
       url: req.url,
-      userAgent: req.get('User-Agent'),
+      userAgent: req.get("User-Agent"),
       ip: req.ip || req.connection.remoteAddress,
-      requestId: req.id
+      requestId: req.id,
     });
 
     // Override res.end to log response
     const originalEnd = res.end;
-    res.end = function(...args) {
+    res.end = function (...args) {
       const duration = Date.now() - start;
-      
-      enhancedLogger.api(
-        req.method,
-        req.url,
-        res.statusCode,
-        duration,
-        {
-          requestId: req.id,
-          ip: req.ip,
-          userAgent: req.get('User-Agent')
-        }
-      );
+
+      enhancedLogger.api(req.method, req.url, res.statusCode, duration, {
+        requestId: req.id,
+        ip: req.ip,
+        userAgent: req.get("User-Agent"),
+      });
 
       // Clear global context
       delete global.requestId;
@@ -419,12 +413,12 @@ function createRequestLogger() {
  */
 function errorLogger() {
   return (error, req, res, next) => {
-    enhancedLogger.error('Request Error', error, {
+    enhancedLogger.error("Request Error", error, {
       method: req.method,
       url: req.url,
       requestId: req.id,
       ip: req.ip,
-      userAgent: req.get('User-Agent')
+      userAgent: req.get("User-Agent"),
     });
 
     next(error);
@@ -437,7 +431,7 @@ function errorLogger() {
 const logStream = {
   write: (message) => {
     enhancedLogger.http(message.trim());
-  }
+  },
 };
 
 module.exports = enhancedLogger;
